@@ -1,0 +1,197 @@
+local TOTAL_CHECKS = 37
+local passedChecks = 0
+
+local Workspace = game:GetService("Workspace")
+local Lighting = game:GetService("Lighting")
+local SoundService = game:GetService("SoundService")
+local PhysicsService = game:GetService("PhysicsService")
+local VRService = game:GetService("VRService")
+local GuiService = game:GetService("GuiService")
+local HttpService = game:GetService("HttpService")
+local Stats = game:GetService("Stats")
+local LocalizationService = game:GetService("LocalizationService")
+local TextChatService = game:GetService("TextChatService")
+local Players = game:GetService("Players")
+
+local native_pcall = pcall
+local native_os_clock = os.clock
+local native_math_floor = math.floor
+local native_string_format = string.format
+
+local function runCheck(checkFunction)
+    local startTime = native_os_clock()
+    
+    if pcall ~= native_pcall or os.clock ~= native_os_clock then
+        print("Security Violation: Environment manipulation detected.")
+        return false
+    end
+
+    local success, result = native_pcall(checkFunction)
+    local endTime = native_os_clock()
+
+    if (endTime - startTime) > 0.05 then 
+        return false 
+    end
+
+    if not success or not result then
+        local percentage = native_math_floor(passedChecks / TOTAL_CHECKS * 100)
+        print(native_string_format(
+            "Integrity failure at check threshold. Progression cleared at %d%%.", 
+            percentage
+        ))
+        return false
+    end
+    
+    passedChecks = passedChecks + 1
+    return true
+end
+
+local checks = {
+    function()
+        local cam = Workspace.CurrentCamera
+        if not cam then return false end
+        local r = cam:ScreenPointToRay(100, 100)
+        return typeof(r.Origin) == "Vector3"
+    end,
+    function()
+        local cf = CFrame.new(5, 2, 1)
+        local p = Vector3.new(1, 0, 0)
+        local o = cf:PointToObjectSpace(cf:PointToWorldSpace(p))
+        return (o - p).Magnitude < 1e-6
+    end,
+    function() return Enum.Font.SourceSans.Name == "SourceSans" end,
+    function()
+        local ts = game:GetService("TweenService")
+        local p = Instance.new("Part")
+        local t = ts:Create(p, TweenInfo.new(.1), {Transparency = 1})
+        p:Destroy()
+        return typeof(t) == "Instance" and t:IsA("Tween")
+    end,
+    function() return typeof(SoundService.AmbientReverb) == "EnumItem" end,
+    function() return typeof(SoundService.RespectFilteringEnabled) == "boolean" end,
+    function() return typeof(Lighting:GetMinutesAfterMidnight()) == "number" end,
+    function()
+        local originalTime = Lighting.ClockTime
+        Lighting.ClockTime = 12
+        local isCorrect = Lighting.ClockTime == 12
+        Lighting.ClockTime = originalTime
+        return isCorrect
+    end,
+    function()
+        local p = Instance.new("Part")
+        local n = p:GetFullName()
+        p:Destroy()
+        return typeof(n) == "string"
+    end,
+    function() return typeof(PhysicsService:GetCollisionGroupId("Default")) == "number" end,
+    function() return RaycastParams.new().IgnoreWater == false end,
+    function() return typeof(Instance.new("HumanoidDescription")) == "Instance" end,
+    function() return typeof(VRService:GetUserCFrame(Enum.UserCFrame.Head)) == "CFrame" end,
+    function()
+        local rp = RaycastParams.new()
+        rp.CollisionGroup = "Default"
+        return rp.CollisionGroup == "Default"
+    end,
+    function() return typeof(Region3int16.new(Vector3int16.new(0,0,0), Vector3int16.new(10,10,10))) == "Region3int16" end,
+    function() return typeof(OverlapParams.new()) == "OverlapParams" end,
+    function()
+        local o = OverlapParams.new()
+        o.FilterType = Enum.RaycastFilterType.Whitelist
+        return o.FilterType == Enum.RaycastFilterType.Whitelist
+    end,
+    function() return typeof(Workspace.Terrain.WriteVoxels) == "function" end,
+    function()
+        local m = Instance.new("MeshPart")
+        local ok = typeof(m.DoubleSided) == "boolean" and typeof(m.RenderFidelity) == "EnumItem"
+        m:Destroy()
+        return ok
+    end,
+    function() return typeof(game:GetService("UserInputService"):GetLastInputType()) == "EnumItem" end,
+    function() return typeof(GuiService:GetGuiInset()) == "Vector2" end,
+    function() return typeof(GuiService:IsTenFootInterface()) == "boolean" end,
+    function()
+        local g = HttpService:GenerateGUID(false)
+        return typeof(g) == "string" and #g > 5
+    end,
+    function() return typeof(Stats.PerformanceStats) == "Instance" end,
+    function()
+        local pl = Players.LocalPlayer
+        if not pl then return false end
+        local ok, tr = pcall(function() return LocalizationService:GetTranslatorForPlayerAsync(pl) end)
+        return ok and typeof(tr) == "Instance"
+    end,
+    function() return typeof(Workspace:GetServerTimeNow()) == "number" end,
+    function()
+        local f = Instance.new("Folder")
+        f:SetAttribute("x", 123)
+        local v = f:GetAttribute("x")
+        f:Destroy()
+        return v == 123
+    end,
+    function()
+        local pr = Instance.new("ProximityPrompt")
+        pr.ActionText = "Use"
+        local ok = pr.ActionText == "Use"
+        pr:Destroy()
+        return ok
+    end,
+    function()
+        local h = Instance.new("Highlight")
+        h.FillColor = Color3.new(1, 0, 0)
+        local ok = typeof(h.FillColor) == "Color3"
+        h:Destroy()
+        return ok
+    end,
+    function()
+        local p1, p2 = Instance.new("Part"), Instance.new("Part")
+        local w = Instance.new("WeldConstraint")
+        w.Part0, w.Part1 = p1, p2
+        local ok = (w.Part0 == p1 and w.Part1 == p2)
+        p1:Destroy(); p2:Destroy(); w:Destroy()
+        return ok
+    end,
+    function()
+        local a = Instance.new("AlignOrientation")
+        local ok = typeof(a) == "Instance"
+        a:Destroy()
+        return ok
+    end,
+    function()
+        local pl = Players.LocalPlayer
+        if not pl then return false end
+        local pg = pl:FindFirstChild("PlayerGui")
+        return pg == nil or typeof(pg) == "Instance"
+    end,
+    function()
+        local a = Instance.new("Actor")
+        local ok = typeof(a) == "Instance"
+        a:Destroy()
+        return ok
+    end,
+    function() return typeof(TextChatService.ChatVersion) == "EnumItem" end,
+    function() return Enum.EasingStyle.Bounce.Name == "Bounce" end,
+    function()
+        local d = Instance.new("HumanoidDescription")
+        local ok = typeof(d.BodyTypeScale) == "number"
+        d:Destroy()
+        return ok
+    end,
+    function()
+        local t = setmetatable({}, {__tostring = function() return "ok" end})
+        return tostring(t) == "ok"
+    end
+}
+
+local RandomGenerator = Random.new()
+for i = #checks, 2, -1 do
+    local j = RandomGenerator:NextInteger(1, i)
+    checks[i], checks[j] = checks[j], checks[i]
+end
+
+for _, check in ipairs(checks) do
+    if not runCheck(check) then
+        return
+    end
+end
+
+print("Environment Verification Succeeded.")
